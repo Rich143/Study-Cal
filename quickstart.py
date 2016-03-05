@@ -130,10 +130,27 @@ def getWorkBlock(length):
 def addToCalendar(workBlocks, service):
     print("Adding work blocks to the calendar")
     for workBlock in workBlocks:
-        new_event = service.events().insert(calendarId='primary', body=workBlock).execute()
+        newEvent = {   
+           'start': {
+                'dateTime': '2016-03-05T09:00:00-07:00',
+                'timeZone': 'America/Los_Angeles',
+            },
+            'end': {
+                'dateTime': '2016-03-05T17:00:00-07:00',
+                'timeZone': 'America/Los_Angeles'
+            }, 
+            'summary' : 'temp'
+        }
+        theString = workBlock['start'].strftime("%Y-%m-%dT%H:%M:%S-08:00")
+        newEvent['start']['dateTime'] = theString
+        newEvent['start']['timeZone'] = 'America/Los_Angeles'
+        newEvent['end']['dateTime'] = workBlock['end'].strftime("%Y-%m-%dT%H:%M:%S-08:00")
+        newEvent['end']['timeZone'] = 'America/Los_Angeles'
+        newEvent['summary'] = workBlock['summary']			
+        new_event = service.events().insert(calendarId='primary', body=newEvent).execute()
         
 		
-def allocateTime(assignments):
+def allocateTime(assignments): #this is passed by value
     #input the list of assignments to be allocated#outputs a list of blocks, representing the proposed scheduling of assignments
     #functionality: splits the freetime blocks into work blocks
     # freetime is global
@@ -150,7 +167,7 @@ def allocateTime(assignments):
                         timeRemaining = 0
                     elif (timeRemaining == defaultWorkBlock):
                         workBlock = getWorkBlock(defaultWorkBlock)
-                        timeRemaining -= defaultWorkBlock
+                        timeRemaining = 0
                     else: # assignment takes more than defaultWorkBlock to complete
                         workBlock = getWorkBlock(defaultWorkBlock)
                         timeRemaining -= defaultWorkBlock					
@@ -218,11 +235,12 @@ def main():
     
     print("Allocating Assignments\n")
     test = allocateTime(assignments)
+  
     for block in test:
         print(block['summary'])
         print(block['start'].strftime("Start: %H:%M, %b %d, %Y"))
         print(block['end'].strftime("End: %H:%M, %b %d, %Y"))
-		        
+        
 
     """
     for idx, assignment in enumerate(assignments):
@@ -257,11 +275,10 @@ def main():
         print(freeBlock['start'].strftime("Start: %H:%M, %b %d, %Y"))
         print(freeBlock['end'].strftime("End: %H:%M, %b %d, %Y"))
 
+  
+    
     #addToCalendar(test, service)
 
-
-    
-    new_event = service.events().insert(calendarId='primary', body=testEvent).execute()
 
     #print "Event created: %s" % (event.get('htmlLink'))
 
