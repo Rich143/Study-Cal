@@ -21,6 +21,16 @@ SCOPES = 'https://www.googleapis.com/auth/calendar'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Google Calendar API Python Quickstart'
 
+testEvent = {
+    'start': {
+    'dateTime': '2016-03-05T09:00:00-07:00',
+    'timeZone': 'America/Los_Angeles',
+    },
+    'end': {
+    'dateTime': '2016-03-05T17:00:00-07:00',
+    'timeZone': 'America/Los_Angeles',
+    }
+}
 event2 = {
   'summary': 'Google I/O 2 2016',
   'location': '800 Howard St., San Francisco, CA 94103',
@@ -89,8 +99,10 @@ def getBlockLength(block):
     return block['end'] - block['start']
 
 def getWorkBlock(length):
+	# input an duration
+	# returns a workblock: which is a dict consisting of start and end datetime
+	# functionality: cycle through the list of freeblocks until a suitable chunk is found and allocate
     workBlock = {}
-
     foundBlock = False
 
     for idx, freeBlock in enumerate(freeTime):
@@ -115,7 +127,36 @@ def getWorkBlock(length):
         return workBlock 
 
 
-
+def addToCalendar(workBlocks, service):
+    print("Adding work blocks to the calendar")
+    for workBlock in workBlocks:
+        new_event = service.events().insert(calendarId='primary', body=workBlock).execute()
+        
+		
+def allocateTime(assignments):
+    #input the list of assignments to be allocated#outputs a list of blocks, representing the proposed scheduling of assignments
+    #functionality: splits the freetime blocks into work blocks
+    # freetime is global
+    output = [];
+    for idx, assignment in enumerate(assignments):
+        #duration = assignment['estimatedDuration'] #in hours
+        timeRemaining = assignment['timeRemaining']
+        while (timeRemaining > 0):
+            for freeBlock in freeTime:
+                check = datetime.timedelta(hours = defaultWorkBlock)			
+                if freeBlock['start'] + check < assignment['dueDate']: #only if its before due date		
+                    if(timeRemaining < defaultWorkBlock):
+                        workBlock = getWorkBlock(timeRemaining)
+                        timeRemaining = 0
+                    elif (timeRemaining == defaultWorkBlock):
+                        workBlock = getWorkBlock(defaultWorkBlock)
+                        timeRemaining -= defaultWorkBlock
+                    else: # assignment takes more than defaultWorkBlock to complete
+                        workBlock = getWorkBlock(defaultWorkBlock)
+                        timeRemaining -= defaultWorkBlock					
+                workBlock['summary'] = assignment['name']
+                output.append(workBlock)	
+    return output
 
 def main():
     """Shows basic usage of the Google Calendar API.
@@ -143,35 +184,47 @@ def main():
     if not events:
         print('No upcoming events found.')
     for event in events:
-        #print(event)
+        
         print(event['start']['dateTime'])
-        print(event['summary'])
+        #print(event['summary'])
         start = event['start'].get('dateTime', event['start'].get('date'))
         #eventTimes.append([event['summary'], event['start']['dateTime'], event['end']['dateTime']
         #print(start, event['summary'])
 
     events.sort(key=lambda r: r['start']['dateTime'])
 
-    
+		
+		
+	
 
     for idx, event in enumerate(events):
         if idx < len(events)-1: #if we don't have the last event
             freeBlockStart = datetime.datetime.strptime(event['end']['dateTime'],"%Y-%m-%dT%H:%M:%S-05:00") # ****assumes UTC-5******
             freeBlockEnd = datetime.datetime.strptime(events[idx+1]['start']['dateTime'],"%Y-%m-%dT%H:%M:%S-05:00") # ****assumes UTC-5******
             freeTime.append({'start' : freeBlockStart, 'end' : freeBlockEnd})
-        else:
-            freeBlockStart = datetime.datetime.strptime(event['start']['dateTime'],"%Y-%m-%dT%H:%M:%S-05:00") # ****assumes UTC-5******
+        else: # for the last event
+            freeBlockStart = datetime.datetime.strptime(event['end']['dateTime'],"%Y-%m-%dT%H:%M:%S-05:00") # ****assumes UTC-5******
             #print(endTime)
             #print(max_event_dateTime)
             if freeBlockStart < max_event_dateTime:
                 freeTime.append({ 'start' : freeBlockStart, 'end' : max_event_dateTime})
 
+    print("Free Time Blocks\n")
     for freeBlock in freeTime:
         print(freeBlock['start'].strftime("Start: %H:%M, %b %d, %Y"))
         print(freeBlock['end'].strftime("End: %H:%M, %b %d, %Y"))
-
+    
     assignments.sort(key=lambda r: r['priority'], reverse=True) #sort assignment by priority, reverse since 1 is highest priority
+    
+    print("Allocating Assignments\n")
+    test = allocateTime(assignments)
+    for block in test:
+        print(block['summary'])
+        print(block['start'].strftime("Start: %H:%M, %b %d, %Y"))
+        print(block['end'].strftime("End: %H:%M, %b %d, %Y"))
+		        
 
+    """
     for idx, assignment in enumerate(assignments):
         duration = assignment['estimatedDuration']
 
@@ -196,22 +249,19 @@ def main():
 
             print("Assignment assigned to time")
             print(workBlock)
-
-
+	"""
+	
+    print("Printing Free Time Blocks\n")
     for freeBlock in freeTime:
+	
         print(freeBlock['start'].strftime("Start: %H:%M, %b %d, %Y"))
         print(freeBlock['end'].strftime("End: %H:%M, %b %d, %Y"))
 
-    """for assignment in assignments:
-        timeRequired = assignments['estimatedDuration']
-
-        if (timeRequired <= defaultWorkBlock):
-            """
-
+    #addToCalendar(test, service)
 
 
     
-    #new_event = service.events().insert(calendarId='primary', body=event2).execute()
+    new_event = service.events().insert(calendarId='primary', body=testEvent).execute()
 
     #print "Event created: %s" % (event.get('htmlLink'))
 
